@@ -1,7 +1,10 @@
 ### How to use?
 Create .env filea and fill it with
-[code]
+```
 DISCORDTOKEN=
 CLIENT_ID
 API=
-[/code]
+```
+API - api key from OpenAI
+Discord Token - should be obvious
+CLient ID - client id of bot
