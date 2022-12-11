@@ -1,6 +1,15 @@
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
-import apiCall from "../api/botRequest"
 import { SlashCommand } from "src/types";
+
+import { Configuration, OpenAIApi} from "openai";
+
+const config = new Configuration({
+    apiKey: process.env.API,
+})
+
+const openai = new OpenAIApi(config);
+
+
 
 const command: SlashCommand = {
     command: new SlashCommandBuilder()
@@ -11,12 +20,12 @@ const command: SlashCommand = {
             .setDescription("The language you want code completion for")
             .setRequired(true)
             .addChoices(
-                {name: "JavaScript", value: "js"},
-                {name: "Python", value: "py"},
-                {name: "Go", value: "go"},
-                {name: "PHP", value: "php"},
-                {name: "Swift", value: "swift"},
-                {name: "TypeScript", value: "ts"},
+                {name: "JavaScript", value: "Javascript"},
+                {name: "Python", value: "Python"},
+                {name: "Go", value: "Go"},
+                {name: "PHP", value: "PHP"},
+                {name: "Swift", value: "Swift"},
+                {name: "TypeScript", value: "TypeScript"},
             )
         )
         .addStringOption(option =>
@@ -41,25 +50,44 @@ const command: SlashCommand = {
                 .setTimestamp()
             interaction.reply({embeds: [embed], ephemeral: true})
             try {
-               apiCall(lang, code, error)
-               .then((data: any) => {
-                let newData = data;
-                let errorEmbed = new EmbedBuilder()
-                    .setTitle("Code Completion")
-                    .setDescription(`There was an error with your request`)
-                    .setColor("#f2f2f2")
-                    .setTimestamp()
-                if(newData.response.status !== 200) return interaction.editReply({embeds: [errorEmbed]})
-                let embed = new EmbedBuilder()
-                    .setTitle("Code Completion")
-                    .setDescription(`Here is the code completion for ${lang}`)
-                    .setColor("#f2f2f2")
-                    .setTimestamp()
-                    .addFields("Code", newData.response.data.code)
-               })
-            }
-            catch (error) {
-                interaction.editReply({content: "There was an error with your request"})
+                async function call(){
+                    const response = await openai.createCompletion({
+                        model: "code-davinci-002",
+                        prompt: `\n ${error} \n ${code} \n`,
+                        temperature: 0.5,
+                        max_tokens: 256,
+                        top_p: 1,
+                        frequency_penalty: 0,
+                        presence_penalty: 0,
+                        })
+                        .then((data) => {
+                            console.log(data.data.choices)
+                            if(data.data.choices[0].text === ''){
+                                let embed = new EmbedBuilder()
+                                    .setTitle("Code Completion")
+                                    .setDescription(`We couldn't find any problem solving for provided code`)
+                                    .setColor("#f2f2f2")
+                                    .setTimestamp()
+                                interaction.editReply({embeds: [embed]})
+                            }
+                            const responseBot = data.data.choices[0].text?.replace(/\\n/g, "\n") && data.data.choices[0].text?.replace('&', "") && data.data.choices[0].text?.replace('<code>', "") && data.data.choices[0].text?.replace('</code>', "")
+                            let embed = new EmbedBuilder()
+                                .setTitle("Code Completion")
+                                .setDescription(`Here is the code completion for ${lang}`)
+                                .setColor("#f2f2f2")
+                                .setTimestamp()
+                                .addFields([
+                                  {name: "Code", value: `\`\`\`\n${responseBot}\`\`\``}
+                                ])
+                            interaction.editReply({embeds: [embed]})
+                        })
+                        .catch((error) => {
+                            console.log(error)
+                        })
+                    }
+                call()
+            } catch (error) {
+                console.log(error)
             }
         }
 }

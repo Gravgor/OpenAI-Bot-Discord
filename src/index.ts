@@ -28,9 +28,11 @@ client.on("ready", () => {
 })
 
 
+
 /* Commands */
 
 slashHandler(client);
+
 
 /* Handlers */
 
